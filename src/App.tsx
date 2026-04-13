@@ -43,43 +43,43 @@ const SOURCES = [
     id: 'Facebook', 
     icon: Facebook, 
     color: 'bg-blue-600',
-    label: { fr: 'Facebook', en: 'Facebook' }
+    label: { fr: 'Facebook', en: 'Facebook', de: 'Facebook' }
   },
   { 
     id: 'Instagram', 
     icon: Instagram, 
     color: 'bg-pink-600',
-    label: { fr: 'Instagram', en: 'Instagram' }
+    label: { fr: 'Instagram', en: 'Instagram', de: 'Instagram' }
   },
   { 
     id: 'Site Internet', 
     icon: Globe, 
     color: 'bg-emerald-600',
-    label: { fr: 'Site Internet', en: 'Website' }
+    label: { fr: 'Site Internet', en: 'Website', de: 'Website' }
   },
   { 
     id: 'LinkedIn', 
     icon: Linkedin, 
     color: 'bg-blue-700',
-    label: { fr: 'LinkedIn', en: 'LinkedIn' }
+    label: { fr: 'LinkedIn', en: 'LinkedIn', de: 'LinkedIn' }
   },
   { 
     id: 'Presse', 
     icon: Newspaper, 
     color: 'bg-slate-700',
-    label: { fr: 'Presse', en: 'Press' }
+    label: { fr: 'Presse', en: 'Press', de: 'Presse' }
   },
   { 
     id: 'Panneaux sur la route', 
     icon: MapPin, 
     color: 'bg-orange-600',
-    label: { fr: 'Panneaux sur la route', en: 'Road signs' }
+    label: { fr: 'Panneaux sur la route', en: 'Road signs', de: 'Straßenschilder' }
   },
   { 
     id: 'Familles, amis, enseignants, Sepass, ...', 
     icon: Users, 
     color: 'bg-purple-600',
-    label: { fr: 'Familles, amis, enseignants, Sepass, ...', en: 'Family, friends, teachers, Sepass, ...' }
+    label: { fr: 'Familles, amis, enseignants, Sepass, ...', en: 'Family, friends, teachers, Sepass, ...', de: 'Familie, Freunde, Lehrer, Sepass, ...' }
   },
 ];
 
@@ -121,11 +121,29 @@ const TRANSLATIONS = {
     stats: "Statistics",
     loading: "Loading...",
     eventLabel: "Open Days"
+  },
+  de: {
+    title: "Wie haben Sie von unserem",
+    titleHighlight: "Tag der offenen Tür erfahren?",
+    subtitle: "Helfen Sie uns, Sie besser zu bedienen, indem Sie uns mitteilen, wie Sie von dieser Veranstaltung erfahren haben.",
+    submit: "Meine Antwort senden",
+    thankYou: "Vielen Dank!",
+    success: "Ihre Antwort wurde erfolgreich aufgezeichnet.",
+    newResponse: "Neue Antwort",
+    statsTitle: "Echtzeit-Statistiken",
+    backToSurvey: "Zurück zur Umfrage",
+    visitWebsite: "Besuchen Sie www.ehtl.lu",
+    footer: "Luxemburger Hotel- und Tourismusschule",
+    adminLogin: "Admin-Login",
+    logout: "Abmelden",
+    stats: "Statistiken",
+    loading: "Laden...",
+    eventLabel: "Tag der offenen Tür"
   }
 };
 
 export default function App() {
-  const [lang, setLang] = useState<'fr' | 'en'>('fr');
+  const [lang, setLang] = useState<'fr' | 'en' | 'de'>('fr');
   const [selected, setSelected] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -250,6 +268,12 @@ export default function App() {
               className={`px-2 py-1 text-xs font-bold rounded-md transition-colors ${lang === 'en' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               EN
+            </button>
+            <button 
+              onClick={() => setLang('de')}
+              className={`px-2 py-1 text-xs font-bold rounded-md transition-colors ${lang === 'de' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              DE
             </button>
           </div>
 
