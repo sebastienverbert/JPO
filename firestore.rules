@@ -27,7 +27,7 @@ service cloud.firestore {
     }
 
     function isValidResponse(data) {
-      let validSources = ["Facebook", "Instagram", "Site Internet", "LinkedIn", "Presse", "Panneaux sur la route", "Familles, amis, enseignants, Sepass, ...", "Autre"];
+      let validSources = ["Facebook", "Instagram", "Site Internet", "LinkedIn", "Presse", "Panneaux sur la route", "Familles, amis, enseignants, Sepas, ...", "Autre"];
       return data.keys().hasAll(['source', 'timestamp']) &&
              data.keys().hasOnly(['source', 'timestamp']) &&
              data.source in validSources &&

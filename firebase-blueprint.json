@@ -8,7 +8,7 @@
         "source": {
           "type": "string",
           "description": "How they heard about the open doors.",
-          "enum": ["Facebook", "Instagram", "Site Internet", "LinkedIn", "Presse", "Panneaux sur la route", "Familles, amis, enseignants, Sepass, ...", "Autre"]
+          "enum": ["Facebook", "Instagram", "Site Internet", "LinkedIn", "Presse", "Panneaux sur la route", "Familles, amis, enseignants, Sepas, ...", "Autre"]
         },
         "timestamp": {
           "type": "string",
