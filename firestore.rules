@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: responses
+    // Document ID: auto-generated
+    // Fields:
+    //   - source: string (required, enum: Facebook, Instagram, Site Internet, LinkedIn, Presse, Panneaux sur la route, Autre)
+    //   - timestamp: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "sebastien.verbert@ebac.lu" && request.auth.token.email_verified == true);
+    }
+
+    function isValidResponse(data) {
+      let validSources = ["Facebook", "Instagram", "Site Internet", "LinkedIn", "Presse", "Panneaux sur la route", "Familles, amis, enseignants, Sepass, ...", "Autre"];
+      return data.keys().hasAll(['source', 'timestamp']) &&
+             data.keys().hasOnly(['source', 'timestamp']) &&
+             data.source in validSources &&
+             data.timestamp is timestamp;
+    }
+
+    match /responses/{responseId} {
+      // Anyone can submit a response (public survey)
+      allow create: if isValidResponse(request.resource.data);
+      
+      // Only admins can read or delete responses
+      allow read, delete: if isAdmin();
+      
+      // No updates allowed to preserve integrity
+      allow update: if false;
+    }
+  }
+}

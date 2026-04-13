@@ -1,0 +1,5 @@
+{
+  "name": "EHTL Portes Ouvertes Survey",
+  "description": "Une application simple pour collecter des statistiques sur la provenance des visiteurs lors des portes ouvertes de l'EHTL.",
+  "requestFramePermissions": []
+}

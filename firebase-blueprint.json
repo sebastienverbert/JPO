@@ -1,0 +1,28 @@
+{
+  "entities": {
+    "Response": {
+      "title": "Response",
+      "description": "A visitor's response to the survey.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "How they heard about the open doors.",
+          "enum": ["Facebook", "Instagram", "Site Internet", "LinkedIn", "Presse", "Panneaux sur la route", "Familles, amis, enseignants, Sepass, ...", "Autre"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the response was submitted."
+        }
+      },
+      "required": ["source", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/responses/{responseId}": {
+      "schema": "Response",
+      "description": "Collection of survey responses."
+    }
+  }
+}
