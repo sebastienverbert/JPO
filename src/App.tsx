@@ -39,6 +39,13 @@ import {
   Upload
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import confetti from 'canvas-confetti';
+import { QRCodeSVG } from 'qrcode.react';
+import { 
+  deleteDoc, 
+  doc, 
+  writeBatch 
+} from 'firebase/firestore';
 
 const SOURCES = [
   // Row 1: Social Networks
@@ -164,6 +171,8 @@ export default function App() {
   const [stats, setStats] = useState<Record<string, number>>({});
   const [loadingStats, setLoadingStats] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(10);
+  const [modal, setModal] = useState<{ type: 'confirm' | 'alert', message: string, onConfirm?: () => void } | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -197,6 +206,23 @@ export default function App() {
     }
   }, [showStats, user]);
 
+  useEffect(() => {
+    if (submitted) {
+      setCountdown(10);
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            setSubmitted(false);
+            setSelected(null);
+            return 10;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [submitted]);
+
   const handleSubmit = async () => {
     if (!selected) return;
     setSubmitting(true);
@@ -206,9 +232,15 @@ export default function App() {
         timestamp: serverTimestamp(),
       });
       setSubmitted(true);
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#1e293b', '#1877F2', '#E4405F', '#0A66C2', '#10b981']
+      });
     } catch (error) {
       console.error("Error submitting response:", error);
-      alert("Une erreur est survenue lors de l'envoi. Veuillez réessayer.");
+      setModal({ type: 'alert', message: "Une erreur est survenue lors de l'envoi. Veuillez réessayer." });
     } finally {
       setSubmitting(false);
     }
@@ -233,7 +265,7 @@ export default function App() {
     if (file) {
       // Check file size (limit to 2MB for localStorage)
       if (file.size > 2 * 1024 * 1024) {
-        alert("L'image est trop grande (max 2Mo). Veuillez choisir une image plus légère.");
+        setModal({ type: 'alert', message: "L'image est trop grande (max 2Mo). Veuillez choisir une image plus légère." });
         return;
       }
 
@@ -247,12 +279,12 @@ export default function App() {
           setSubmitting(false);
         } catch (err) {
           console.error("Storage error:", err);
-          alert("Erreur lors de la sauvegarde du logo. L'image est peut-être trop lourde.");
+          setModal({ type: 'alert', message: "Erreur lors de la sauvegarde du logo. L'image est peut-être trop lourde." });
           setSubmitting(false);
         }
       };
       reader.onerror = () => {
-        alert("Erreur lors de la lecture du fichier.");
+        setModal({ type: 'alert', message: "Erreur lors de la lecture du fichier." });
         setSubmitting(false);
       };
       reader.readAsDataURL(file);
@@ -266,6 +298,75 @@ export default function App() {
   const removeLogo = () => {
     setLogoUrl(null);
     localStorage.removeItem('ehtl_logo');
+  };
+
+  const exportToCSV = async () => {
+    try {
+      const q = query(collection(db, 'responses'), orderBy('timestamp', 'desc'));
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(doc => {
+        const d = doc.data();
+        return {
+          source: d.source,
+          date: d.timestamp?.toDate().toLocaleString('fr-FR') || 'N/A'
+        };
+      });
+
+      const csvContent = "data:text/csv;charset=utf-8," 
+        + "Source,Date\n"
+        + data.map(row => `${row.source},${row.date}`).join("\n");
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `ehtl_stats_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Export error:", error);
+      setModal({ type: 'alert', message: "Erreur lors de l'exportation." });
+    }
+  };
+
+  const resetData = async () => {
+    setModal({
+      type: 'confirm',
+      message: "ÊTES-VOUS SÛR ? Cette action supprimera TOUTES les réponses enregistrées définitivement.",
+      onConfirm: async () => {
+        setLoadingStats(true);
+        try {
+          const q = query(collection(db, 'responses'));
+          const snapshot = await getDocs(q);
+          
+          if (snapshot.empty) {
+            setModal({ type: 'alert', message: "Aucune donnée à supprimer." });
+            setLoadingStats(false);
+            return;
+          }
+
+          // Firestore batches are limited to 500 operations
+          const chunks = [];
+          for (let i = 0; i < snapshot.docs.length; i += 500) {
+            chunks.push(snapshot.docs.slice(i, i + 500));
+          }
+
+          for (const chunk of chunks) {
+            const batch = writeBatch(db);
+            chunk.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+          }
+          
+          setStats({});
+          setModal({ type: 'alert', message: "Toutes les données ont été réinitialisées." });
+        } catch (error) {
+          console.error("Reset error:", error);
+          setModal({ type: 'alert', message: "Erreur lors de la réinitialisation." });
+        } finally {
+          setLoadingStats(false);
+        }
+      }
+    });
   };
 
   const isAdmin = user?.email === ADMIN_EMAIL;
@@ -288,15 +389,26 @@ export default function App() {
             <h1 className="text-2xl font-bold text-slate-900">{t.thankYou}</h1>
             <p className="text-slate-600">{t.success}</p>
           </div>
-          <button 
-            onClick={() => {
-              setSubmitted(false);
-              setSelected(null);
-            }}
-            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-semibold hover:bg-slate-800 transition-colors"
-          >
-            {t.newResponse}
-          </button>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-100 flex flex-col items-center gap-3">
+            <QRCodeSVG value="https://www.instagram.com/ehtl.lu/" size={120} />
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Suivez-nous sur Instagram</p>
+          </div>
+
+          <div className="space-y-3">
+            <button 
+              onClick={() => {
+                setSubmitted(false);
+                setSelected(null);
+              }}
+              className="w-full py-4 bg-slate-900 text-white rounded-2xl font-semibold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+            >
+              {t.newResponse}
+            </button>
+            <p className="text-[10px] text-slate-400 font-medium">
+              Retour automatique dans <span className="font-bold text-slate-900">{countdown}s</span>
+            </p>
+          </div>
         </motion.div>
       </div>
     );
@@ -415,12 +527,26 @@ export default function App() {
             >
               <div className="flex justify-between items-center sticky top-0 bg-white/80 backdrop-blur-sm py-2 z-10">
                 <h2 className="text-xl font-bold">{TRANSLATIONS.fr.statsTitle}</h2>
-                <button 
-                  onClick={() => setShowStats(false)}
-                  className="text-xs font-medium text-slate-500 hover:text-slate-900"
-                >
-                  {TRANSLATIONS.fr.backToSurvey}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={exportToCSV}
+                    className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md uppercase"
+                  >
+                    Exporter CSV
+                  </button>
+                  <button 
+                    onClick={resetData}
+                    className="text-[10px] font-bold text-red-600 hover:text-red-700 bg-red-50 px-2 py-1 rounded-md uppercase"
+                  >
+                    Réinitialiser
+                  </button>
+                  <button 
+                    onClick={() => setShowStats(false)}
+                    className="text-xs font-medium text-slate-500 hover:text-slate-900 ml-2"
+                  >
+                    {TRANSLATIONS.fr.backToSurvey}
+                  </button>
+                </div>
               </div>
 
               {loadingStats ? (
@@ -531,6 +657,50 @@ export default function App() {
       <footer className="max-w-4xl mx-auto mt-4 pt-2 border-t border-slate-200 text-center text-slate-400 text-[9px] uppercase tracking-widest font-bold shrink-0">
         &copy; {new Date().getFullYear()} {t.footer}
       </footer>
+
+      {/* Custom Modal */}
+      <AnimatePresence>
+        {modal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4"
+            >
+              <p className="text-slate-700 font-medium text-center">{modal.message}</p>
+              <div className="flex gap-3">
+                {modal.type === 'confirm' ? (
+                  <>
+                    <button 
+                      onClick={() => setModal(null)}
+                      className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                    >
+                      Annuler
+                    </button>
+                    <button 
+                      onClick={() => {
+                        modal.onConfirm?.();
+                        setModal(null);
+                      }}
+                      className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
+                    >
+                      Confirmer
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    onClick={() => setModal(null)}
+                    className="w-full py-2 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors"
+                  >
+                    OK
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
